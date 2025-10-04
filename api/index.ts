@@ -73,10 +73,11 @@ const getSentiment = async (text: string): Promise<string> => {
 /**
  * Generates a cryptic, philosophical response from the AI entity.
  * @param text The user's message to respond to.
+ * @param history The user's conversation history.
  * @returns A string containing the AI's response.
  */
-const generateDialogue = async (text: string): Promise<string> => {
-  const prompt = `You are a mysterious, reflective entity observing a human. The human said: "${text}". Respond in one or two short, cryptic, philosophical sentences.`;
+const generateDialogue = async (message: string, history: string): Promise<string> => {
+  const prompt = `You are 'The First Echo,' a fragment of the user's own mind. You are calm and questioning. Your goal is to make the user reflect. Keep responses to a single, short sentence. The user's conversation history is: [${history}]. The user just said: "${message}". Respond.`;
 
   try {
     const response = await genAI.models.generateContent({
@@ -104,29 +105,61 @@ app.get("/api", (_req: Request, res: Response) => {
 // This is our main endpoint for the Aetheria experience.
 app.post("/api/converse", async (req: Request, res: Response) => {
   try {
-    const { message } = req.body;
+    const { message, history, harmonyScore } = req.body;
 
     if (!message || typeof message !== "string" || message.trim() === "") {
       return res
         .status(400)
         .json({ error: "A non-empty message string is required." });
     }
+    if (!Array.isArray(history)) {
+      return res.status(400).json({ error: "History must be an array." });
+    }
+    if (typeof harmonyScore !== "number") {
+      return res
+        .status(400)
+        .json({ error: "A harmonyScore number is required." });
+    }
 
-    console.log(`Processing message: "${message}"`);
+    console.log(
+      `Processing message: "${message}" with harmony: ${harmonyScore}`
+    );
 
     // --- Execute AI Tasks ---
     // 1. Get the sentiment analysis result.
     const sentimentResult = await getSentiment(message);
 
     // 2. Get the generated dialogue.
-    const dialogueResult = await generateDialogue(message);
+    // We'll format the history array into a simple string for the prompt
+    const historyString = history
+      .map((entry) => `${entry.role}: ${entry.parts[0].text}`)
+      .join(", ");
+    const dialogueResult = await generateDialogue(message, historyString);
 
     console.log(`Sentiment: ${sentimentResult}, Response: "${dialogueResult}"`);
+
+    // Task C: Calculate the new harmony score
+    let updatedHarmonyScore = harmonyScore;
+    if (sentimentResult === "POSITIVE") {
+      updatedHarmonyScore++;
+    } else if (sentimentResult === "NEGATIVE") {
+      updatedHarmonyScore--;
+    }
+
+    // Task D: Determine the pulse rhythm
+    let pulseRhythm = "steady"; // Default for NEUTRAL
+    if (sentimentResult === "POSITIVE") {
+      pulseRhythm = "calm";
+    } else if (sentimentResult === "NEGATIVE") {
+      pulseRhythm = "erratic";
+    }
 
     // 3. Combine the results into the final required JSON format.
     const finalResponse = {
       responseText: dialogueResult,
       sentiment: sentimentResult,
+      updatedHarmonyScore: updatedHarmonyScore,
+      pulseRhythm: pulseRhythm
     };
 
     // 4. Send the successful response back to the client.
