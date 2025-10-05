@@ -12,6 +12,13 @@ export const getSessionId = (): string => {
 
 
 export const PERSONA_CONFIG = {
+  core: {
+    title: "The Core Echo",
+    subtitle: "A moment of truth.",
+    gradient: "from-gray-400 via-gray-200 to-white",
+    avatar: "●", // A simple, pure symbol.
+    avatarBg: "from-gray-700 to-gray-900",
+  },
   genesis: {
     title: "Speak to Loki",
     subtitle: "The trickster Goblin awaits your questions...",
