@@ -85,7 +85,7 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-  "https://aetheria.vercel.app",
+  "https://aetheria-tan-rho.vercel.app",
   /\.vercel\.app$/ // allow any Vercel preview URL
 ];
 
