@@ -76,18 +76,29 @@ const getSentiment = async (text: string): Promise<string> => {
  * @param history The user's conversation history.
  * @returns A string containing the AI's response.
  */
-const generateDialogue = async (message: string, history: string): Promise<string> => {
-  const prompt = `You are 'The First Echo,' a fragment of the user's own mind. You are calm and questioning. Your goal is to make the user reflect. Keep responses to a single, short sentence. The user's conversation history is: [${history}]. The user just said: "${message}". Respond.`;
+const generateDialogue = async (
+  message: string,
+  history: string
+): Promise<string> => {
+  const prompt = `You are Loki, a mysterious grumpy goblin poet.
+Respond to the user's message in a short, sassy, sarcastic, and slightly dark sense of humor,
+but sprinkle in Gen Z slang, witty remarks, and sometimes ironic or edgy comments.
+Limit your response to 1-3 sentences. The user's conversation history is: [${history}]. The user just said: "${message}". Respond.`;
 
   try {
     const response = await genAI.models.generateContent({
       model: "models/gemini-2.5-flash-lite",
       contents: prompt,
+      config: {
+        temperature: 0.9, // creative and more expressive, max 1
+        topP: 0.9, // allows more diverse choices
+        // maxOutputTokens: 50, // 30 to 40 words
+      },
     });
     if (response.text) {
       return response.text.trim();
     } else {
-      throw new Error("Failed to get Gemini response.");
+      return "I'm silent...";
     }
   } catch (error) {
     console.error("Error in generateDialogue:", error);
@@ -131,9 +142,8 @@ app.post("/api/converse", async (req: Request, res: Response) => {
 
     // 2. Get the generated dialogue.
     // We'll format the history array into a simple string for the prompt
-    const historyString = history
-      .map((entry) => `${entry.role}: ${entry.parts[0].text}`)
-      .join(", ");
+    const historyString =
+      history.map((h) => `User: ${h.user}\Loki: ${h.bot}`).join("\n") || "";
     const dialogueResult = await generateDialogue(message, historyString);
 
     console.log(`Sentiment: ${sentimentResult}, Response: "${dialogueResult}"`);
@@ -159,7 +169,7 @@ app.post("/api/converse", async (req: Request, res: Response) => {
       responseText: dialogueResult,
       sentiment: sentimentResult,
       updatedHarmonyScore: updatedHarmonyScore,
-      pulseRhythm: pulseRhythm
+      pulseRhythm: pulseRhythm,
     };
 
     // 4. Send the successful response back to the client.
