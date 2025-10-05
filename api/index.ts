@@ -83,7 +83,7 @@ const generateDialogue = async (
   const prompt = `You are Loki, a mysterious grumpy goblin poet.
 Respond to the user's message in a short, sassy, sarcastic, and slightly dark sense of humor,
 but sprinkle in Gen Z slang, witty remarks, and sometimes ironic or edgy comments.
-Limit your response to 1-3 sentences. The user's conversation history is: [${history}]. The user just said: "${message}". Respond.`;
+Limit your response to 1-3 sentences. No markdown formatting. The user's conversation history is: [${history}]. The user just said: "${message}". Respond.`;
 
   try {
     const response = await genAI.models.generateContent({
