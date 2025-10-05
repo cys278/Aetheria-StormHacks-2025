@@ -1,3 +1,5 @@
+import { Canvas } from "@react-three/fiber";
+import FloatingEchoes from "./FloatingEchoes";
 import { useState, useRef, useEffect } from 'react';
 import { Send } from 'lucide-react';
 
@@ -23,7 +25,8 @@ async function fetchLokiResponse(userMessage: string): Promise<string> {
   return reply;
 }
 
-export default function LokiChatUI() {
+export default function LokiChatUI({ onTriggerCitadel }: { onTriggerCitadel?: () => void }) {
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -70,39 +73,44 @@ useEffect(() => {
 
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+  if (!input.trim()) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: input,
-      sender: 'user',
-      timestamp: new Date()
-    };
+  const userMessage: Message = {
+    id: Date.now().toString(),
+    text: input,
+    sender: 'user',
+    timestamp: new Date()
+  };
 
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setIsTyping(true);
+  setMessages(prev => [...prev, userMessage]);
+  setInput('');
+  setIsTyping(true);
 
-    const response = await fetchLokiResponse(input);
+  const response = await fetchLokiResponse(input);
 
-// --- Dummy Sentiment Analysis ---
-const moods = ['POSITIVE', 'NEGATIVE', 'NEUTRAL'] as const;
-const randomMood = moods[Math.floor(Math.random() * moods.length)];
-setSentiment(randomMood);
-setPulseRhythm(randomMood === 'POSITIVE' ? 'calm' : randomMood === 'NEGATIVE' ? 'erratic' : 'steady');
-// --------------------------------
+  // --- Dummy Sentiment Analysis ---
+  const moods = ['POSITIVE', 'NEGATIVE', 'NEUTRAL'] as const;
+  const randomMood = moods[Math.floor(Math.random() * moods.length)];
+  setSentiment(randomMood);
+  setPulseRhythm(randomMood === 'POSITIVE' ? 'calm' : randomMood === 'NEGATIVE' ? 'erratic' : 'steady');
+  // --------------------------------
 
-const lokiMessage: Message = {
-  id: (Date.now() + 1).toString(),
-  text: response,
-  sender: 'loki',
-  timestamp: new Date()
+  const lokiMessage: Message = {
+    id: (Date.now() + 1).toString(),
+    text: response,
+    sender: 'loki',
+    timestamp: new Date()
+  };
+
+  setIsTyping(false);
+  setMessages(prev => [...prev, lokiMessage]);
+
+  // 🏰 Phase 3: trigger scene transition if keyword detected
+  if (input.toLowerCase().includes("citadel")) {
+    onTriggerCitadel?.();
+  }
 };
 
-
-    setIsTyping(false);
-    setMessages(prev => [...prev, lokiMessage]);
-  };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -137,6 +145,21 @@ const getBackground = () => {
   className="min-h-screen relative overflow-hidden transition-all duration-[2000ms] ease-in-out"
   style={{ background: getBackground() }}
 >
+
+  {/* 3D layer: floating text fragments */}
+<div className="absolute inset-0 -z-0 pointer-events-none">
+  <Canvas
+    camera={{ position: [0, 0, 4] }}
+    dpr={[1, 2]}
+  >
+    <ambientLight intensity={0.4} />
+    <pointLight position={[2, 2, 2]} intensity={1.2} />
+    {/* Fog gives depth so tiny far texts feel atmospheric */}
+    <fog attach="fog" args={["#000000", 6, 14]} />
+    <FloatingEchoes messages={messages} sentiment={sentiment} />
+  </Canvas>
+</div>
+
 
       {/* Animated particles background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
