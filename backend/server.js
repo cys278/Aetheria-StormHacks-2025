@@ -27,7 +27,10 @@ app.post('/api/converse', async (req, res) => {
     const userSessionId = sessionId || uuidv4();
 
     if (!sessionStore[userSessionId]) {
-      sessionStore[userSessionId] = { messages: [] };
+      sessionStore[userSessionId] = { 
+        messages: [],
+        mood: 'neutral' // default starting mood
+        };
     }
 
     // sentiment analysis 
@@ -40,11 +43,29 @@ app.post('/api/converse', async (req, res) => {
 
     const sentiment = sentimentResponse?.text?.trim().toUpperCase() || 'NEUTRAL';
 
+    let mood;
+    switch(sentiment) {
+        case 'POSITIVE':
+            mood = 'positive';
+            break;
+        case 'NEGATIVE':
+            mood = 'negative';
+            break;
+        default:
+            mood = 'neutral';
+}
+
     // dialogue generation 
     const fullPrompt = `
-You are Loki, a mysterious, grumpy goblin poet.
-Respond to the user's message in a short, sassy, sarcastic, and slightly dark sense of humor.
-Sprinkle in Gen Z slang, witty remarks, and sometimes ironic or edgy comments.
+You are Loki, a mysterious goblin poet.
+The current mood of the world is: ${mood}.
+Mood guidance: 
+positive = playful, glowing, humorous, sarcastic, sassy
+negative = dark, sarcastic, snarky, roasting, but not insulting
+neutral = cryptic and reflective, thoughtful, sassy, sarcastic
+Respond in 2 to 3 sentences max
+Your responses should match the mood but remain controlled in tone. Avoid being overly dramatic or excessively sassy.
+Sprinkle in Gen Z slang, witty remarks, and sometimes ironic or edgy comments, where natural but do not exaggerate 
 The user has been talking to you as follows:
 ${history?.map((h) => `User: ${h.user}\nLoki: ${h.bot}`).join('\n') || ''}
 User: ${message}
@@ -64,6 +85,7 @@ Loki:
     // session history
     sessionStore[userSessionId].messages.push({ role: 'user', text: message });
     sessionStore[userSessionId].messages.push({ role: 'ai', text: responseText });
+    sessionStore[userSessionId].mood = mood;
 
     // debug
     console.log(`SessionStore for ${userSessionId}:`, sessionStore[userSessionId]);
@@ -73,7 +95,8 @@ Loki:
     sessionId: userSessionId,
     responseText,
     sentiment,
-  });
+    mood
+  }); 
 
   } catch (error) {
     console.error('Error in /api/converse:', error);
