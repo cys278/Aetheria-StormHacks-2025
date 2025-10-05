@@ -6,7 +6,14 @@ import { OrbitControls, Stars } from "@react-three/drei";
 // ✨ Shared type (same as in App.tsx)
 type Sentiment = 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL';
 
-export default function SceneCitadel({ sentiment }: { sentiment: Sentiment }) {
+export default function SceneCitadel({
+  sentiment,
+  onExitCitadel,
+}: {
+  sentiment: Sentiment;
+  onExitCitadel: () => void;
+}) {
+
   // ✨ Mood-driven palette
   const palette = useMemo(() => {
     switch (sentiment) {
@@ -68,6 +75,26 @@ export default function SceneCitadel({ sentiment }: { sentiment: Sentiment }) {
       >
         The Citadel of Regret
       </div>
+      {/* 👇 Exit button */}
+<div className="absolute bottom-6 right-8">
+  <button
+    onClick={onExitCitadel}
+    className={`
+      px-6 py-2 text-sm font-semibold text-white rounded-lg border transition-all
+      hover:scale-105 hover:shadow-lg
+      ${
+        sentiment === 'POSITIVE'
+          ? 'bg-gradient-to-r from-green-400 to-emerald-600 border-emerald-400 shadow-green-500/40'
+          : sentiment === 'NEGATIVE'
+          ? 'bg-gradient-to-r from-red-500 to-pink-600 border-pink-500 shadow-pink-500/40'
+          : 'bg-gradient-to-r from-blue-500 to-cyan-500 border-cyan-400 shadow-cyan-500/40'
+      }
+    `}
+  >
+    Return to Loki
+  </button>
+</div>
+
     </div>
   );
 }
