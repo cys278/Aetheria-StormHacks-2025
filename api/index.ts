@@ -3,7 +3,7 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Content } from "@google/genai";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -15,10 +15,17 @@ if (!geminiApiKey) {
   );
 }
 
+type PulseRhythm = "steady" | "calm" | "erratic";
+
+// --- Session Management ---
+interface SessionState {
+  pulseHarmony: PulseRhythm;
+  harmonyScore: number;
+  history: Content[]; // Using the 'Content' type from the SDK
+}
+const sessions = new Map<string, SessionState>();
+
 const genAI = new GoogleGenAI({ apiKey: geminiApiKey, apiVersion: "v1" });
-// const model = genAI.models.get({ model: "models/gemini-2.5-flash-lite" });
-// 4. Specify the model you want to use
-// const ai = genAI.models.generateContent({ model: "models/gemini-flash-latest", contents: "Hello World!" });
 
 // Initialize the Express application
 const app = express();
@@ -70,32 +77,6 @@ const getSentiment = async (text: string): Promise<string> => {
   }
 };
 
-/**
- * Generates a cryptic, philosophical response from the AI entity.
- * @param text The user's message to respond to.
- * @param history The user's conversation history.
- * @returns A string containing the AI's response.
- */
-const generateDialogue = async (message: string, history: string): Promise<string> => {
-  const prompt = `You are 'The First Echo,' a fragment of the user's own mind. You are calm and questioning. Your goal is to make the user reflect. Keep responses to a single, short sentence. The user's conversation history is: [${history}]. The user just said: "${message}". Respond.`;
-
-  try {
-    const response = await genAI.models.generateContent({
-      model: "models/gemini-2.5-flash-lite",
-      contents: prompt,
-    });
-    if (response.text) {
-      return response.text.trim();
-    } else {
-      throw new Error("Failed to get Gemini response.");
-    }
-  } catch (error) {
-    console.error("Error in generateDialogue:", error);
-    // Provide a fallback response if the API fails
-    return "The echoes fade into silence...";
-  }
-};
-
 // --- Routes ---
 // A simple health check route to confirm the server is running.
 app.get("/api", (_req: Request, res: Response) => {
@@ -105,61 +86,100 @@ app.get("/api", (_req: Request, res: Response) => {
 // This is our main endpoint for the Aetheria experience.
 app.post("/api/converse", async (req: Request, res: Response) => {
   try {
-    const { message, history, harmonyScore } = req.body;
-
-    if (!message || typeof message !== "string" || message.trim() === "") {
+    const { sessionId, message } = req.body;
+    if (!sessionId || !message) {
       return res
         .status(400)
-        .json({ error: "A non-empty message string is required." });
-    }
-    if (!Array.isArray(history)) {
-      return res.status(400).json({ error: "History must be an array." });
-    }
-    if (typeof harmonyScore !== "number") {
-      return res
-        .status(400)
-        .json({ error: "A harmonyScore number is required." });
+        .json({ error: "sessionId and message are required." });
     }
 
-    console.log(
-      `Processing message: "${message}" with harmony: ${harmonyScore}`
-    );
+    // 1. Get or create the user's session
+    let userSession: SessionState;
+    if (sessions.has(sessionId)) {
+      userSession = sessions.get(sessionId)!;
+    } else {
+      userSession = {
+        pulseHarmony: "steady",
+        harmonyScore: 0,
+        // NEW: Add a system instruction to the start of the history
+        // to set the AI's persona for the entire chat session.
+        history: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: "System instruction: You are Loki, a mysterious grumpy goblin poet. Respond to the user's message in a short, sassy, sarcastic, and slightly dark sense of humor, but sprinkle in Gen Z slang, witty remarks, and sometimes ironic or edgy comments. Limit your response to 1-3 sentences. No markdown formatting.",
+              },
+            ],
+          },
+          {
+            role: "model",
+            parts: [{ text: "Hi there!" }],
+          },
+        ],
+      };
+    }
 
     // --- Execute AI Tasks ---
     // 1. Get the sentiment analysis result.
     const sentimentResult = await getSentiment(message);
 
-    // 2. Get the generated dialogue.
-    // We'll format the history array into a simple string for the prompt
-    const historyString = history
-      .map((entry) => `${entry.role}: ${entry.parts[0].text}`)
-      .join(", ");
-    const dialogueResult = await generateDialogue(message, historyString);
+    console.log(
+      `Processing message: "${message}" with harmony: ${userSession.harmonyScore}`
+    );
 
-    console.log(`Sentiment: ${sentimentResult}, Response: "${dialogueResult}"`);
+    // 2. NEW: Use the proper chat session method
+    const chat = genAI.chats.create({
+      history: userSession.history,
+      model: "models/gemini-2.5-flash-lite",
+      config: {
+        temperature: 0.9, // creative and more expressive, max 1
+        topP: 0.9, // allows more diverse choices
+        // maxOutputTokens: 50, // 30 to 40 words
+      },
+    });
 
-    // Task C: Calculate the new harmony score
-    let updatedHarmonyScore = harmonyScore;
-    if (sentimentResult === "POSITIVE") {
-      updatedHarmonyScore++;
-    } else if (sentimentResult === "NEGATIVE") {
-      updatedHarmonyScore--;
+    const result = await chat.sendMessage({
+      message
+    });
+    const dialogueResult = result.text;
+
+    if (!dialogueResult) {
+      res.status(200).json({
+        responseText: "I'm silent...",
+        sentiment: sentimentResult,
+        updatedHarmonyScore: userSession.harmonyScore,
+        pulseRhythm: userSession.pulseHarmony,
+      });
     }
 
+    if (sentimentResult === "POSITIVE") userSession.harmonyScore++;
+    if (sentimentResult === "NEGATIVE") userSession.harmonyScore--;
+
+    userSession.history.push({ role: "user", parts: [{ text: message }] });
+    userSession.history.push({
+      role: "model",
+      parts: [{ text: dialogueResult }],
+    });
+
+    sessions.set(sessionId, userSession);
+
     // Task D: Determine the pulse rhythm
-    let pulseRhythm = "steady"; // Default for NEUTRAL
+    let pulseRhythm: PulseRhythm = "steady"; // Default for NEUTRAL
     if (sentimentResult === "POSITIVE") {
       pulseRhythm = "calm";
     } else if (sentimentResult === "NEGATIVE") {
       pulseRhythm = "erratic";
     }
 
+    userSession.pulseHarmony = pulseRhythm;
+
     // 3. Combine the results into the final required JSON format.
     const finalResponse = {
       responseText: dialogueResult,
       sentiment: sentimentResult,
-      updatedHarmonyScore: updatedHarmonyScore,
-      pulseRhythm: pulseRhythm
+      updatedHarmonyScore: userSession.harmonyScore,
+      pulseRhythm: pulseRhythm,
     };
 
     // 4. Send the successful response back to the client.
