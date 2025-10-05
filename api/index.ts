@@ -82,12 +82,12 @@ const app = express();
 
 /* ------------------------------ CORS SETUP ------------------------------ */
 // Allow both local dev and Vercel preview/prod frontends
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:3000",
-  "https://aetheria-tan-rho.vercel.app",
-  /\.vercel\.app$/ // allow any Vercel preview URL
-];
+// const allowedOrigins = [
+//   "http://localhost:5173",
+//   "http://localhost:3000",
+//   "https://aetheria-tan-rho.vercel.app",
+//   /\.vercel\.app$/ // allow any Vercel preview URL
+// ];
 
 // ✅ Explicitly handle all preflight requests (for Vercel serverless)
 app.use((req, res, next) => {
