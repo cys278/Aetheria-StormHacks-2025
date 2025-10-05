@@ -1,14 +1,20 @@
-// App.tsx (sketch). # have to change this 
+// App.tsx (sketch).
 import { useState } from "react";
 import SceneAwakening from "./components/SceneAwakening";
 import LokiChatUI from "./components/LokiChatUI";
 import SceneTransition from "./components/SceneTransition";
 import { useSceneTransition } from "./hooks/useSceneTransition";
+import SceneCitadel from "./components/SceneCitadel";
+import type { MoodType, PulseRhythm } from "./types";
 
 export default function App() {
   const [awakened, setAwakened] = useState(false);
   const [citadel, setCitadel] = useState(false);
   const { active, fadeToBlack } = useSceneTransition();
+
+  //  ADD: single source of truth for mood
+  const [sentiment, setSentiment] = useState<MoodType>("neutral");
+  const [pulseRhythm, setPulseRhythm] = useState<PulseRhythm>("steady");
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black">
@@ -16,18 +22,21 @@ export default function App() {
 
       {awakened && !citadel && (
         <LokiChatUI
-          // Example: trigger transition when you want (button, score, etc.)
-
-          
-          //onTriggerCitadel={() => fadeToBlack(() => setCitadel(true))}
+          //  NEW: pass mood down + setter callback
+          sentiment={sentiment}
+          pulseRhythm={pulseRhythm}
+          onSentimentChange={(s: MoodType, r: PulseRhythm) => {
+            setSentiment(s);
+            setPulseRhythm(r);
+          }}
+          onTriggerCitadel={() => fadeToBlack(() => setCitadel(true))}
         />
       )}
 
       {/* Placeholder: Your second scene component */}
       {citadel && (
-        <div className="absolute inset-0 flex items-center justify-center text-white">
-          <h1 className="text-4xl">Citadel of Regret (WIP)</h1>
-        </div>
+        // ✨ NEW: Citadel reacts to the same sentiment
+        <SceneCitadel sentiment={sentiment} />
       )}
 
       <SceneTransition active={active} />

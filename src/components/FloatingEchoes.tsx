@@ -1,11 +1,11 @@
 // src/components/FloatingEchoes.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Detailed, Text } from "@react-three/drei";
 import * as THREE from "three";
+import type { Message, MoodType } from "../types";
 
-type Sentiment = "POSITIVE" | "NEGATIVE" | "NEUTRAL";
-type Msg = { id: string; text: string; sender: "user" | "loki"; timestamp: Date };
+// type Msg = { id: string; text: string; sender: "user" | "loki"; timestamp: Date };
 
 type Fragment = {
   id: string;
@@ -17,9 +17,9 @@ type Fragment = {
   color: string;        // based on sentiment
 };
 
-function colorFor(sentiment: Sentiment) {
-  if (sentiment === "POSITIVE") return "#34d399"; // emerald-400
-  if (sentiment === "NEGATIVE") return "#f43f5e"; // rose-500
+function colorFor(sentiment: MoodType) {
+  if (sentiment === "positive") return "#34d399"; // emerald-400
+  if (sentiment === "negative") return "#f43f5e"; // rose-500
   return "#22d3ee"; // cyan-400
 }
 
@@ -109,8 +109,8 @@ export default function FloatingEchoes({
   maxFragments = 20,
   lifeMs = 30000,
 }: {
-  messages: Msg[];
-  sentiment: Sentiment;
+  messages: Message[];
+  sentiment: MoodType;
   maxFragments?: number;
   lifeMs?: number;
 }) {
