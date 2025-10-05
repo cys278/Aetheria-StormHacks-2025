@@ -1,7 +1,7 @@
 // Express.js backend - V2 Narrative Engine (Granular Prompt Control)
 
 import express, { Request, Response } from "express";
-import cors from "cors";
+// import cors from "cors";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
 // import axios from "axios";
