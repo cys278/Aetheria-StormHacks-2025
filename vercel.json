@@ -9,31 +9,23 @@
   },
   "routes": [
     {
-      "src": "^/api/(.*)",
-      "methods": ["OPTIONS"],
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        "Access-Control-Max-Age": "86400"
-      },
-      "continue": true 
+      "handle": "headers",
+      "headers": [
+        {
+          "source": "/api/(.*)",
+          "headers": [
+            { "key": "Access-Control-Allow-Origin", "value": "*" },
+            { "key": "Access-Control-Allow-Methods", "value": "GET,POST,OPTIONS" },
+            { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+          ]
+        }
+      ]
     },
     {
       "src": "^/api/(.*)",
-      "dest": "/api/index.ts",
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization"
-      }
+      "dest": "/api/index.ts"
     },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/.*",
-      "dest": "/dist/index.html"
-    }
+    { "handle": "filesystem" },
+    { "src": "/.*", "dest": "/dist/index.html" }
   ]
 }
