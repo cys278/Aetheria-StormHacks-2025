@@ -3,6 +3,12 @@ import FloatingEchoes from "./FloatingEchoes";
 import { useState, useRef, useEffect } from 'react';
 import { Send } from 'lucide-react';
 
+import { Howl } from 'howler'; // ✨ add this import
+
+type Sentiment = 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL';
+type Rhythm = 'calm' | 'erratic' | 'steady';
+
+
 
 
 interface Message {
@@ -25,14 +31,22 @@ async function fetchLokiResponse(userMessage: string): Promise<string> {
   return reply;
 }
 
-export default function LokiChatUI({ onTriggerCitadel }: { onTriggerCitadel?: () => void }) {
+export default function LokiChatUI({
+  onTriggerCitadel,
+  sentiment,
+  pulseRhythm,
+  onSentimentChange,
+}: {
+  onTriggerCitadel?: () => void;
+  sentiment: Sentiment;
+  pulseRhythm: Rhythm;
+  onSentimentChange: (s: Sentiment, r: Rhythm) => void;
+}) {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const [sentiment, setSentiment] = useState<'POSITIVE' | 'NEGATIVE' | 'NEUTRAL'>('NEUTRAL');
-  const [pulseRhythm, setPulseRhythm] = useState<'calm' | 'erratic' | 'steady'>('steady');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -89,11 +103,16 @@ useEffect(() => {
   const response = await fetchLokiResponse(input);
 
   // --- Dummy Sentiment Analysis ---
-  const moods = ['POSITIVE', 'NEGATIVE', 'NEUTRAL'] as const;
-  const randomMood = moods[Math.floor(Math.random() * moods.length)];
-  setSentiment(randomMood);
-  setPulseRhythm(randomMood === 'POSITIVE' ? 'calm' : randomMood === 'NEGATIVE' ? 'erratic' : 'steady');
-  // --------------------------------
+const moods = ['POSITIVE', 'NEGATIVE', 'NEUTRAL'] as const;
+const randomMood = moods[Math.floor(Math.random() * moods.length)];
+const rhythm: Rhythm =
+  randomMood === 'POSITIVE' ? 'calm' :
+  randomMood === 'NEGATIVE' ? 'erratic' : 'steady';
+
+// ✨ Report mood to App
+onSentimentChange(randomMood, rhythm);
+// --------------------------------
+
 
   const lokiMessage: Message = {
     id: (Date.now() + 1).toString(),
