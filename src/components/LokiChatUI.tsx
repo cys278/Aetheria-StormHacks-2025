@@ -31,16 +31,20 @@ const getSessionId = (): string => {
 
 export default function LokiChatUI({
   onTriggerCitadel,
+  onJourneyComplete,
   sentiment,
   pulseRhythm,
   onSentimentChange,
 }: {
   onTriggerCitadel?: () => void;
+  onJourneyComplete?: (key: string) => void;
   sentiment: MoodType;
   pulseRhythm: PulseRhythm;
   onSentimentChange: (s: MoodType, r: PulseRhythm) => void;
 }) {
   const [harmonyScore, setHarmonyScore] = useState<number>(0);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const audioRef = useRef<Howl | null>(null); // To manage the audio object
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -53,6 +57,7 @@ export default function LokiChatUI({
   const [showRebirthAnimation, setShowRebirthAnimation] = useState(false);
   const [rebirthType, setRebirthType] = useState<RebirthEvent>(null);
   const [conversationTurns, setConversationTurns] = useState<number>(0); // NEW: Track conversation depth
+  const [keyIsUnlocked, setKeyIsUnlocked] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -110,8 +115,75 @@ export default function LokiChatUI({
     }
   }, [showRebirthAnimation]);
 
+  // This effect runs whenever the last message changes
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+
+    // Only act on new messages from Loki, and not while already speaking
+    if (lastMessage && lastMessage.sender === "loki" && !isSpeaking) {
+      // Stop and unload any previous audio
+      if (audioRef.current) {
+        audioRef.current.stop();
+        audioRef.current.unload();
+      }
+
+      const fetchAndPlayAudio = async () => {
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_API_BASE_URL}/speak`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                text: lastMessage.text,
+                persona: lastMessage.persona || persona,
+                pulseRhythm: pulseRhythm
+              }),
+            }
+          );
+
+          if (!response.ok) throw new Error("Failed to fetch audio.");
+
+          const audioBlob = await response.blob();
+          const audioUrl = URL.createObjectURL(audioBlob);
+
+          const sound = new Howl({
+            src: [audioUrl],
+            format: ["mp3"],
+            html5: true, // Crucial for playing from a blob URL
+            onplay: () => setIsSpeaking(true),
+            onend: () => {
+              setIsSpeaking(false);
+              URL.revokeObjectURL(audioUrl); // Clean up the blob URL
+            },
+            onstop: () => setIsSpeaking(false),
+            onloaderror: () => setIsSpeaking(false),
+            onplayerror: () => setIsSpeaking(false),
+          });
+
+          audioRef.current = sound;
+          sound.play();
+        } catch (error) {
+          console.error("Audio playback error:", error);
+          setIsSpeaking(false);
+        }
+      };
+
+      fetchAndPlayAudio();
+    }
+    // We only want this to run when the `messages` array gets a new item.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
+
   const handleSend = async () => {
     if (!input.trim()) return;
+
+    if (keyIsUnlocked) {
+      // Any message sent after unlocking the key triggers the final reflection
+      onJourneyComplete?.("reflection");
+      setInput(""); // Clear the input
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -136,8 +208,15 @@ export default function LokiChatUI({
 
       console.log(`🌍 Environment: "${environmentDescription}"`);
 
-      if (input.toLowerCase().includes("citadel")) {
-        onTriggerCitadel?.();
+      // if (input.toLowerCase().includes("citadel")) {
+      //   onTriggerCitadel?.();
+      // }
+
+      const lower = input.toLowerCase();
+      if (lower.includes("ending:regret")) {
+        onJourneyComplete?.("regret");
+      } else if (lower.includes("ending:truth")) {
+        onJourneyComplete?.("truth");
       }
 
       const response = await postConverse({
@@ -159,18 +238,36 @@ export default function LokiChatUI({
         setPersona(response.persona);
       }
 
-      // Handle rebirth events
-      if (response.event) {
+      // Handle rebirth and citadel entry events
+      if (response.event === "KEY_UNLOCKED") {
+        setKeyIsUnlocked(true);
+        console.log("🔑 The key has been unlocked by the player!");
+      }
+      if (response.event === "ENTER_CITADEL") {
+        const guardianMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: response.responseText,
+          sender: "loki",
+          persona: response.persona, // <-- Attach the 'core' persona here
+        };
+        setMessages((prev) => [...prev, guardianMessage]);
+        onTriggerCitadel?.();
+      } else if (response.event === "JOURNEY_COMPLETE") {
+        // <-- ADD THIS 'ELSE IF'
+        onJourneyComplete?.("reflection");
+      } else if (response.event) {
+        // This handles REBIRTH events
         setRebirthType(response.event);
         setShowRebirthAnimation(true);
-        setMessages([]); // Clear messages on rebirth
-        setConversationTurns(0); // NEW: Reset turn counter on rebirth
+        setMessages([]);
+        setConversationTurns(0);
       }
 
       const lokiMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: response.responseText,
         sender: "loki",
+        persona: response.persona,
       };
 
       setIsTyping(false);
@@ -391,43 +488,53 @@ export default function LokiChatUI({
                 msOverflowStyle: "none", // for IE & Edge
               }}
             >
-              {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex ${
-                    message.sender === "user" ? "justify-end" : "justify-start"
-                  } animate-slide-in`}
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  {message.sender === "loki" && (
-                    <div
-                      className={`flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br ${currentPersona.avatarBg} flex items-center justify-center mr-3 shadow-lg shadow-cyan-500/30`}
-                    >
-                      <span className="text-white font-bold text-sm">
-                        {currentPersona.avatar}
-                      </span>
-                    </div>
-                  )}
-
+              {messages.map((message, index) => {
+                const personaForMessage =
+                  PERSONA_CONFIG[message.persona || persona];
+                return (
                   <div
-                    className={`max-w-[80%] md:max-w-[70%] rounded-2xl px-5 py-3 ${
+                    key={index}
+                    className={`flex ${
                       message.sender === "user"
-                        ? "bg-[#1E293B] text-white shadow-lg"
-                        : "bg-gradient-to-br from-gray-900/90 to-gray-800/90 text-gray-100 border border-cyan-500/30 shadow-lg shadow-cyan-500/10 backdrop-blur-sm animate-glow"
-                    }`}
+                        ? "justify-end"
+                        : "justify-start"
+                    } animate-slide-in`}
+                    style={{ animationDelay: `${index * 0.1}s` }}
                   >
-                    <p className="text-sm md:text-base leading-relaxed">
-                      {message.text}
-                    </p>
-                  </div>
+                    {message.sender === "loki" && (
+                      <div
+                        className={`flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br ${personaForMessage.avatarBg} flex items-center justify-center mr-3 shadow-lg shadow-cyan-500/30`}
+                      >
+                        <span
+                          className={`text-white font-bold text-sm ${
+                            isSpeaking ? "animate-pulse" : ""
+                          }`}
+                        >
+                          {personaForMessage.avatar}
+                        </span>
+                      </div>
+                    )}
 
-                  {message.sender === "user" && (
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center ml-3">
-                      <span className="text-white font-bold text-sm">Y</span>
+                    <div
+                      className={`max-w-[80%] md:max-w-[70%] rounded-2xl px-5 py-3 ${
+                        message.sender === "user"
+                          ? "bg-[#1E293B] text-white shadow-lg"
+                          : "bg-gradient-to-br from-gray-900/90 to-gray-800/90 text-gray-100 border border-cyan-500/30 shadow-lg shadow-cyan-500/10 backdrop-blur-sm animate-glow"
+                      }`}
+                    >
+                      <p className="text-sm md:text-base leading-relaxed">
+                        {message.text}
+                      </p>
                     </div>
-                  )}
-                </div>
-              ))}
+
+                    {message.sender === "user" && (
+                      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center ml-3">
+                        <span className="text-white font-bold text-sm">Y</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
 
               {/* Typing indicator */}
               {isTyping && (
@@ -482,10 +589,14 @@ export default function LokiChatUI({
                 onKeyDown={handleKeyPress}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
-                placeholder={`Speak to ${currentPersona.title.replace(
-                  "Speak to ",
-                  ""
-                )}...`}
+                placeholder={
+                  keyIsUnlocked
+                    ? "The game is won. Ask for your reflection..."
+                    : `Speak to ${currentPersona.title.replace(
+                        "Speak to ",
+                        ""
+                      )}...`
+                }
                 className="w-full px-6 py-4 bg-transparent text-white placeholder-gray-500 outline-none text-sm md:text-base"
               />
               <button

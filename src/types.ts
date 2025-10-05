@@ -1,6 +1,6 @@
 export type PulseRhythm = "steady" | "calm" | "erratic";
 export type MoodType = "positive" | "negative" | "neutral";
-export type RebirthEvent = "REBIRTH_POSITIVE" | "REBIRTH_NEGATIVE" | null;
+export type RebirthEvent = "EXIT_CITADEL" | "KEY_UNLOCKED" | "JOURNEY_COMPLETE" | "ENTER_CITADEL" |"REBIRTH_POSITIVE" | "REBIRTH_NEGATIVE" | null;
 export type Persona = "genesis" | "zenith" | "nadir";
 
 // Request structure - simplified (removed history and harmonyScore)
@@ -35,4 +35,5 @@ export interface Message {
     id: string;
   text: string;
   sender: "user" | "loki";
+  persona?: Persona;
 }
