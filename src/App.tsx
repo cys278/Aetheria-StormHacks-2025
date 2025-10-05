@@ -18,7 +18,7 @@ export default function App() {
   const [sentiment, setSentiment] = useState<MoodType>("neutral");
   const [pulseRhythm, setPulseRhythm] = useState<PulseRhythm>("steady");
 
-  const handleExitCitadel = () => fadeToBlack(() => setCitadel(false));
+  // const handleExitCitadel = () => fadeToBlack(() => setCitadel(false));
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black">
@@ -43,7 +43,7 @@ export default function App() {
       {/* Placeholder: Your second scene component */}
       {citadel && (
         // ✨ NEW: Citadel reacts to the same sentiment
-        <SceneCitadel sentiment={sentiment} onExitCitadel={handleExitCitadel} />
+        <SceneCitadel sentiment={sentiment} />
       )}
 
       {/* Ending overlay takes precedence */}

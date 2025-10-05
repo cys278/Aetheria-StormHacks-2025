@@ -6,10 +6,10 @@ import type { MoodType } from "../types";
 
 export default function SceneCitadel({
   sentiment,
-  onExitCitadel,
+  // onExitCitadel,
 }: {
   sentiment: MoodType;
-  onExitCitadel: () => void;
+  // onExitCitadel: () => void;
 }) {
   // ✨ Mood-driven palette
   const palette = useMemo(() => {
