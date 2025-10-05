@@ -91,19 +91,10 @@ const app = express();
 
 // ✅ Explicitly handle all preflight requests (for Vercel serverless)
 app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*"); // Temporarily allow all origins
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (req.method === "OPTIONS") {
-    const origin = req.headers.origin;
-    // Mirror back the requesting origin if allowed
-    if (
-      origin &&
-      (origin.includes("localhost") ||
-        origin.endsWith(".vercel.app") ||
-        origin === "https://aetheria-tan-rho.vercel.app")
-    ) {
-      res.setHeader("Access-Control-Allow-Origin", origin);
-    }
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     res.status(200).end();
     return;
   }
