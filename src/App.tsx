@@ -5,6 +5,8 @@ import LokiChatUI from "./components/LokiChatUI";
 import SceneTransition from "./components/SceneTransition";
 import { useSceneTransition } from "./hooks/useSceneTransition";
 import SceneCitadel from "./components/SceneCitadel";
+import EndingScreen from "./components/EndingScreen"; // Newly Added for Ending scene
+
 
 // 🌈 Shared types (you can move these to types.ts later)
 type Sentiment = 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL';
@@ -13,6 +15,7 @@ type Rhythm = 'calm' | 'erratic' | 'steady';
 export default function App() {
   const [awakened, setAwakened] = useState(false);
   const [citadel, setCitadel] = useState(false);
+  const [endingKey, setEndingKey] = useState<string | null>(null); // newly added for Ending Scene
   const { active, fadeToBlack } = useSceneTransition();
 
   // 🎭 Single source of truth for world emotion
@@ -37,6 +40,12 @@ export default function App() {
             setPulseRhythm(r);
           }}
           onTriggerCitadel={() => fadeToBlack(() => setCitadel(true))}
+
+
+           // newly added for triggering the ending scene
+          onTriggerEnding={(key: string) =>
+          fadeToBlack(() => setEndingKey(key))
+         }
         />
       )}
 
@@ -47,6 +56,19 @@ export default function App() {
           onExitCitadel={handleExitCitadel} // 👈 added exit callback
         />
       )}
+
+      {/* Ending overlay takes precedence */}
+    {endingKey && (
+      <EndingScreen
+        endingKey={endingKey}
+       sentiment={sentiment}
+        onClose={() =>
+          fadeToBlack(() => {
+          setEndingKey(null);
+           setCitadel(false); // ensure we land back in chat
+          })
+       }       />
+     )}
 
       {/* Fade transition overlay */}
       <SceneTransition active={active} />

@@ -33,11 +33,13 @@ async function fetchLokiResponse(userMessage: string): Promise<string> {
 
 export default function LokiChatUI({
   onTriggerCitadel,
+   onTriggerEnding, // newly added for ending scene
   sentiment,
   pulseRhythm,
   onSentimentChange,
 }: {
   onTriggerCitadel?: () => void;
+  onTriggerEnding?: (key: string) => void;
   sentiment: Sentiment;
   pulseRhythm: Rhythm;
   onSentimentChange: (s: Sentiment, r: Rhythm) => void;
@@ -127,6 +129,17 @@ onSentimentChange(randomMood, rhythm);
   // 🏰 Phase 3: trigger scene transition if keyword detected
   if (input.toLowerCase().includes("citadel")) {
     onTriggerCitadel?.();
+  }
+
+
+
+  // ✨ NEW: demo trigger for an ending
+   // Replace this with your real logic (score, pattern, etc.)
+   const lower = input.toLowerCase();
+  if (lower.includes("ending:regret")) {
+   onTriggerEnding?.("regret");
+  } else if (lower.includes("ending:truth")) {
+    onTriggerEnding?.("truth");
   }
 };
 
