@@ -2,7 +2,8 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { GoogleGenAI } from '@google/genai'; // gemini library
-import { v4 as uuidv4 } from 'uuid'; // optional, for dummy/fallback IDs
+import { v4 as uuidv4 } from 'uuid'; // for dummy/fallback IDs
+import { generateAudioFromText } from './ttsHelper.js'; 
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -34,7 +35,11 @@ app.post('/api/converse', async (req, res) => {
     }
 
     // sentiment analysis 
-    const sentimentPrompt = `Analyze the sentiment of this text: "${message}". Respond with POSITIVE, NEGATIVE, or NEUTRAL only.`;
+    const sentimentPrompt = `
+Classify this text strictly as POSITIVE, NEGATIVE, or NEUTRAL.
+Do not explain. Only output one word.
+Text: "${message}"
+`;
 
     const sentimentResponse = await ai.models.generateContent({
       model: 'gemini-2.5-flash-lite',
@@ -42,6 +47,7 @@ app.post('/api/converse', async (req, res) => {
     });
 
     const sentiment = sentimentResponse?.text?.trim().toUpperCase() || 'NEUTRAL';
+    console.log("Sentiment raw response:", sentimentResponse?.text);
 
     let mood;
     switch(sentiment) {
@@ -81,6 +87,7 @@ Loki:
     });
 
     const responseText = dialogueResponse?.text?.trim() || "I'm silent...";
+    const audio = await generateAudioFromText(responseText, mood); 
 
     // session history
     sessionStore[userSessionId].messages.push({ role: 'user', text: message });
@@ -94,13 +101,13 @@ Loki:
     res.json({
     sessionId: userSessionId,
     responseText,
-    sentiment,
-    mood
+    mood,
+    audio,  // base64 encoded TTS 
   }); 
 
   } catch (error) {
     console.error('Error in /api/converse:', error);
-    res.status(500).json({ error: 'Something went wrong with Gemini API' });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
