@@ -89,22 +89,27 @@ const allowedOrigins = [
   /\.vercel\.app$/ // allow any Vercel preview URL
 ];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // allow server-to-server or local tools
-      if (allowedOrigins.some((o) => (typeof o === "string" ? o === origin : o.test(origin)))) {
-        callback(null, true);
-      } else {
-        console.warn("❌ Blocked CORS request from:", origin);
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
-);
+// ✅ Explicitly handle all preflight requests (for Vercel serverless)
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    const origin = req.headers.origin;
+    // Mirror back the requesting origin if allowed
+    if (
+      origin &&
+      (origin.includes("localhost") ||
+        origin.endsWith(".vercel.app") ||
+        origin === "https://aetheria-tan-rho.vercel.app")
+    ) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+    }
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.status(200).end();
+    return;
+  }
+  next();
+});
+
 
 // Handle preflight for all routes
 app.options(/^\/api\/.*$/, cors());
