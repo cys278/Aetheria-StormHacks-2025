@@ -9,23 +9,31 @@
   },
   "routes": [
     {
-      "handle": "headers",
+      "src": "^/api/(.*)",
+      "methods": ["OPTIONS"],
       "headers": [
-        {
-          "source": "/api/(.*)",
-          "headers": [
-            { "key": "Access-Control-Allow-Origin", "value": "*" },
-            { "key": "Access-Control-Allow-Methods", "value": "GET,POST,OPTIONS" },
-            { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
-          ]
-        }
-      ]
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+        { "key": "Access-Control-Max-Age", "value": "86400" }
+      ],
+      "dest": "/api/index.ts"
     },
     {
       "src": "^/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+      ],
       "dest": "/api/index.ts"
     },
-    { "handle": "filesystem" },
-    { "src": "/.*", "dest": "/dist/index.html" }
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/.*",
+      "dest": "/dist/index.html"
+    }
   ]
 }
