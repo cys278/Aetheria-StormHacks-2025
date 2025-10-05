@@ -1,7 +1,14 @@
-import LokiChatUI from './components/LokiChatUI';
+import { useState } from "react";
+import SceneAwakening from "./components/SceneAwakening";
+import LokiChatUI from "./components/LokiChatUI";
 
-function App() {
-  return <LokiChatUI />;
+export default function App() {
+  const [awakened, setAwakened] = useState(false);
+
+  return (
+    <div className="relative w-screen h-screen overflow-hidden bg-black">
+      {!awakened && <SceneAwakening onAwaken={() => setAwakened(true)} />}
+      {awakened && <LokiChatUI />}
+    </div>
+  );
 }
-
-export default App;
