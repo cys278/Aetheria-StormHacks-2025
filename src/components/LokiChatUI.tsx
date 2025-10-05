@@ -16,6 +16,7 @@ import {
   getTimeOfDay,
 } from "../utils/environmentCalculator";
 import { PERSONA_CONFIG } from "../utils/helpers";
+import { Howl } from "howler";
 
 const getSessionId = (): string => {
   let sessionId = localStorage.getItem("aetheria-session-id");
