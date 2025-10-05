@@ -90,19 +90,19 @@ const app = express();
 // ];
 
 // ✅ Explicitly handle all preflight requests (for Vercel serverless)
-app.use((req, res, next) => {
-  console.log(`[CORS DEBUG] Method: ${req.method}, URL: ${req.url}, Origin: ${req.headers.origin}`);
-  res.setHeader("Access-Control-Allow-Origin", "*"); // Allow all for now
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization"); // Ensure all relevant headers are here
+// app.use((req, res, next) => {
+//   console.log(`[CORS DEBUG] Method: ${req.method}, URL: ${req.url}, Origin: ${req.headers.origin}`);
+//   res.setHeader("Access-Control-Allow-Origin", "*"); // Allow all for now
+//   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+//   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization"); // Ensure all relevant headers are here
 
-  if (req.method === "OPTIONS") {
-    console.log(`[CORS DEBUG] Ending OPTIONS request for: ${req.url}`);
-    res.status(200).end(); // Important: terminate OPTIONS here
-    return; // Stop further middleware execution for OPTIONS
-  }
-  next(); // For GET, POST, etc., continue to the next middleware
-});
+//   if (req.method === "OPTIONS") {
+//     console.log(`[CORS DEBUG] Ending OPTIONS request for: ${req.url}`);
+//     res.status(200).end(); // Important: terminate OPTIONS here
+//     return; // Stop further middleware execution for OPTIONS
+//   }
+//   next(); // For GET, POST, etc., continue to the next middleware
+// });
 
 // Ensure express.json() comes after CORS handling
 app.use(express.json());
