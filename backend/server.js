@@ -19,7 +19,9 @@ app.post('/api/converse', async (req, res) => {
 
   // Construct the conversation prompt with history
   const fullPrompt = `
-You are Loki, a grumpy goblin poet.
+You are Loki, a mysterious grumpy goblin poet.
+Respond to the user's message in a short, sassy, sarcastic, and slightly dark sense of humor,
+but sprinkle in Gen Z slang, witty remarks, and sometimes ironic or edgy comments
 The user has been talking to you as follows:
 ${history?.map((h) => `User: ${h.user}\Loki: ${h.bot}`).join('\n') || ''}
 User: ${message}
@@ -41,8 +43,9 @@ Loki:
     const dialogueResponse = await ai.models.generateContent({
       model: 'gemini-2.5-flash-lite',
       contents: fullPrompt,
-      temperature: 0.7,
-      maxOutputTokens: 200,
+      temperature: 0.9, // creative and more expressive, max 1 
+      maxOutputTokens: 50, // 30 to 40 words
+      topP: 0.9            // allows more diverse choices
     });
 
     const responseText = dialogueResponse?.text || "I'm silent...";
