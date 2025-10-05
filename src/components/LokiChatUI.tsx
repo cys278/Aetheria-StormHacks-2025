@@ -1,18 +1,17 @@
 import { useState, useRef, useEffect } from "react";
-import { Send } from "lucide-react";
-import { postConverse } from "../services/apiClient";
+import { Send, Sparkles, Skull } from "lucide-react";
+import {
+  postConverse,
+  type Persona,
+  type RebirthEvent,
+  type PulseRhythm,
+} from "../services/apiClient";
 import { v4 } from "uuid";
-
-interface ChatTurn {
-  user: string;
-  bot: string;
-}
+import { getEnvironmentDescription, getTimeOfDay } from "../utils/environmentCalculator";
 
 interface Message {
-  // id: string;
   text: string;
-  // sender: 'user' | 'loki';
-  // timestamp: Date;
+  sender: "user" | "loki";
 }
 
 const getSessionId = (): string => {
@@ -24,17 +23,141 @@ const getSessionId = (): string => {
   return sessionId;
 };
 
+// NEW: Persona configurations for dynamic UI
+const PERSONA_CONFIG = {
+  genesis: {
+    title: "Speak to Loki",
+    subtitle: "The trickster Goblin awaits your questions...",
+    gradient: "from-cyan-400 via-purple-400 to-pink-400",
+    avatar: "L",
+    avatarBg: "from-cyan-500 to-purple-600",
+  },
+  zenith: {
+    title: "The Silent Observer",
+    subtitle: "Peace has been achieved. Speak with the wise guide...",
+    gradient: "from-blue-300 via-cyan-300 to-teal-300",
+    avatar: "✨",
+    avatarBg: "from-blue-400 to-cyan-500",
+  },
+  nadir: {
+    title: "The Broken Echo",
+    subtitle: "Fragments remain. Speak with what's left...",
+    gradient: "from-red-500 via-orange-500 to-yellow-500",
+    avatar: "💀",
+    avatarBg: "from-red-600 to-orange-600",
+  },
+};
+
+// NEW: Sophisticated World State Calculator
+interface WorldStateFactors {
+  harmonyScore: number;
+  pulseRhythm: PulseRhythm;
+  persona: Persona;
+  memoryCount: number;
+  conversationTurns: number;
+}
+
+const calculateWorldState = (factors: WorldStateFactors): string => {
+  const { harmonyScore, pulseRhythm, persona, memoryCount, conversationTurns } =
+    factors;
+
+  // Persona-specific base states
+  if (persona === "zenith") {
+    if (memoryCount > 5) return "transcendent and memory-laden";
+    if (pulseRhythm === "calm") return "serene and luminous";
+    return "peaceful and enlightened";
+  }
+
+  if (persona === "nadir") {
+    if (memoryCount > 5) return "fractured with haunting echoes";
+    if (pulseRhythm === "erratic") return "chaotic and deteriorating";
+    return "dark and fragmented";
+  }
+
+  // Genesis persona - most complex state calculation
+  const isEarlyConversation = conversationTurns < 3;
+  const hasSignificantMemories = memoryCount >= 3;
+
+  // Extreme states
+  if (harmonyScore > 12) {
+    if (pulseRhythm === "calm") return "radiant and ascending";
+    if (hasSignificantMemories) return "brightening with remembered joy";
+    return "vibrant and hopeful";
+  }
+
+  if (harmonyScore < -12) {
+    if (pulseRhythm === "erratic") return "violently stormy and descending";
+    if (hasSignificantMemories) return "darkening with remembered pain";
+    return "ominous and turbulent";
+  }
+
+  // High positive harmony (7-12)
+  if (harmonyScore > 7) {
+    if (pulseRhythm === "calm") return "warm and crystalline";
+    if (hasSignificantMemories) return "glowing with cherished moments";
+    return "luminous and uplifting";
+  }
+
+  // Moderate positive harmony (3-7)
+  if (harmonyScore > 3) {
+    if (pulseRhythm === "calm") return "gentle and clear";
+    if (isEarlyConversation) return "cautiously optimistic";
+    return "pleasant and steady";
+  }
+
+  // High negative harmony (-12 to -7)
+  if (harmonyScore < -7) {
+    if (pulseRhythm === "erratic") return "tempestuous and crackling";
+    if (hasSignificantMemories) return "heavy with dark recollections";
+    return "stormy and foreboding";
+  }
+
+  // Moderate negative harmony (-7 to -3)
+  if (harmonyScore < -3) {
+    if (pulseRhythm === "erratic") return "unsettled and tense";
+    if (isEarlyConversation) return "wary and overcast";
+    return "somber and clouded";
+  }
+
+  // Neutral range (-3 to 3)
+  if (isEarlyConversation) {
+    return "quiet and expectant";
+  }
+
+  if (hasSignificantMemories) {
+    return "contemplative and layered";
+  }
+
+  if (pulseRhythm === "calm") {
+    return "tranquil and balanced";
+  }
+
+  if (pulseRhythm === "erratic") {
+    return "restless and shifting";
+  }
+
+  // Default neutral
+  return "calm and neutral";
+};
+
 export default function LokiChatUI() {
-  const [harmonyScoreNumber, setHarmonyScoreNumber] = useState<number>(0);
+  const [harmonyScore, setHarmonyScore] = useState<number>(0);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [history, setHistory] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [memories, setMemories] = useState<string[]>([]);
+  const [persona, setPersona] = useState<Persona>("genesis");
+  const [pulseRhythm, setPulseRhythm] = useState<PulseRhythm>("steady"); // NEW: Track pulse rhythm
+  const [showRebirthAnimation, setShowRebirthAnimation] = useState(false);
+  const [rebirthType, setRebirthType] = useState<RebirthEvent>(null);
+  const [conversationTurns, setConversationTurns] = useState<number>(0); // NEW: Track conversation depth
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const sessionId = getSessionId();
+  const currentPersona = PERSONA_CONFIG[persona];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -44,43 +167,82 @@ export default function LokiChatUI() {
     scrollToBottom();
   }, [messages, isTyping]);
 
+  useEffect(() => {
+    if (showRebirthAnimation) {
+      const timer = setTimeout(() => {
+        setShowRebirthAnimation(false);
+        setRebirthType(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showRebirthAnimation]);
+
   const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage: Message = {
-      // id: Date.now().toString(),
       text: input,
-      // sender: 'user',
-      // timestamp: new Date()
+      sender: "user",
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsTyping(true);
 
-    const response = await postConverse({
-      history,
-      message: input,
-      harmonyScore: harmonyScoreNumber,
-      sessionId,
-    });
-    setHarmonyScoreNumber(response.updatedHarmonyScore);
+    try {
+      // NEW: Calculate comprehensive environment state
+      const environmentDescription = getEnvironmentDescription({
+        harmonyScore,
+        pulseRhythm,
+        persona,
+        memoryCount: memories.length,
+        conversationTurns,
+        timeOfDay: getTimeOfDay(), // Optional: adds time-based variation
+      });
 
-    const lokiMessage: Message = {
-      // id: (Date.now() + 1).toString(),
-      text: response.responseText,
-      // sender: 'loki',
-      // timestamp: new Date()
-    };
+      console.log(`🌍 Environment: "${environmentDescription}"`);
 
-    const chatTurn: ChatTurn = {
-      user: userMessage.text,
-      bot: lokiMessage.text,
-    };
+      const response = await postConverse({
+        sessionId,
+        message: input,
+        worldState: environmentDescription, // Send rich environment description
+      });
 
-    setIsTyping(false);
-    setMessages((prev) => [...prev, lokiMessage]);
-    setHistory((prev) => [...prev, chatTurn]);
+      // Update all state from response
+      setHarmonyScore(response.updatedHarmonyScore);
+      setMemories(response.memories);
+      setPulseRhythm(response.pulseRhythm); // NEW: Update pulse rhythm
+      setConversationTurns((prev) => prev + 1); // NEW: Increment turn counter
+
+      // Handle persona changes
+      if (response.persona !== persona) {
+        setPersona(response.persona);
+      }
+
+      // Handle rebirth events
+      if (response.event) {
+        setRebirthType(response.event);
+        setShowRebirthAnimation(true);
+        setMessages([]); // Clear messages on rebirth
+        setConversationTurns(0); // NEW: Reset turn counter on rebirth
+      }
+
+      const lokiMessage: Message = {
+        text: response.responseText,
+        sender: "loki",
+      };
+
+      setIsTyping(false);
+
+      if (!response.event) {
+        setMessages((prev) => [...prev, lokiMessage]);
+      } else {
+        setMessages([lokiMessage]);
+      }
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      setIsTyping(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -92,8 +254,43 @@ export default function LokiChatUI() {
 
   const hasMessages = messages.length > 0 || isTyping;
 
+  // NEW: Get current environment for display (optional)
+  const currentEnvironment = getEnvironmentDescription({
+    harmonyScore,
+    pulseRhythm,
+    persona,
+    memoryCount: memories.length,
+    conversationTurns,
+    timeOfDay: getTimeOfDay(),
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#121212] to-[#1a1a1a] relative overflow-hidden">
+      {/* Rebirth Animation Overlay */}
+      {showRebirthAnimation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="text-center animate-pulse">
+            {rebirthType === "REBIRTH_POSITIVE" ? (
+              <>
+                <Sparkles className="w-24 h-24 mx-auto mb-4 text-cyan-400" />
+                <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                  REBIRTH
+                </h2>
+                <p className="text-cyan-300 mt-2">You have found harmony...</p>
+              </>
+            ) : (
+              <>
+                <Skull className="w-24 h-24 mx-auto mb-4 text-red-500" />
+                <h2 className="text-4xl font-bold bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">
+                  REBIRTH
+                </h2>
+                <p className="text-red-400 mt-2">Darkness consumes...</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Animated particles background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
@@ -121,12 +318,71 @@ export default function LokiChatUI() {
         {/* Welcome header - only show when no messages */}
         {!hasMessages && (
           <div className="text-center mb-8 animate-fade-in">
-            <h1 className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient">
-              Speak to Loki
+            <h1
+              className={`text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r ${currentPersona.gradient} bg-clip-text text-transparent animate-gradient`}
+            >
+              {currentPersona.title}
             </h1>
-            <p className="text-gray-400 text-lg">
-              The trickster Goblin awaits your questions...
-            </p>
+            <p className="text-gray-400 text-lg">{currentPersona.subtitle}</p>
+
+            {/* Harmony Score Display */}
+            <div className="mt-6 inline-block px-6 py-3 rounded-full bg-white/5 border border-gray-700/50">
+              <span className="text-gray-400 text-sm">Harmony: </span>
+              <span
+                className={`font-bold ${
+                  harmonyScore > 10
+                    ? "text-cyan-400"
+                    : harmonyScore < -10
+                    ? "text-red-400"
+                    : "text-gray-300"
+                }`}
+              >
+                {harmonyScore}
+              </span>
+            </div>
+
+            {/* NEW: World State Display (optional - shows on welcome screen) */}
+            <div className="mt-3">
+              <p className="text-xs text-gray-500 italic">
+                The world is {currentEnvironment}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Memory Pills (show when messages exist) */}
+        {hasMessages && memories.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2 animate-fade-in">
+            {memories.map((memory, idx) => (
+              <span
+                key={idx}
+                className="px-3 py-1 text-xs rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300"
+              >
+                {memory}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Compact Harmony Score + World State (when chat is active) */}
+        {hasMessages && (
+          <div className="mb-2 text-center space-y-1">
+            <div>
+              <span className="text-xs text-gray-500">Harmony: </span>
+              <span
+                className={`text-sm font-bold ${
+                  harmonyScore > 10
+                    ? "text-cyan-400"
+                    : harmonyScore < -10
+                    ? "text-red-400"
+                    : "text-gray-400"
+                }`}
+              >
+                {harmonyScore}
+              </span>
+            </div>
+            {/* NEW: World State indicator */}
+            <p className="text-xs text-gray-600 italic">{currentEnvironment}</p>
           </div>
         )}
 
@@ -137,19 +393,23 @@ export default function LokiChatUI() {
               <div
                 key={index}
                 className={`flex ${
-                  index % 2 === 0 ? "justify-end" : "justify-start"
+                  message.sender === "user" ? "justify-end" : "justify-start"
                 } animate-slide-in`}
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                {index % 2 !== 0 && (
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center mr-3 shadow-lg shadow-cyan-500/30">
-                    <span className="text-white font-bold text-sm">L</span>
+                {message.sender === "loki" && (
+                  <div
+                    className={`flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br ${currentPersona.avatarBg} flex items-center justify-center mr-3 shadow-lg shadow-cyan-500/30`}
+                  >
+                    <span className="text-white font-bold text-sm">
+                      {currentPersona.avatar}
+                    </span>
                   </div>
                 )}
 
                 <div
                   className={`max-w-[80%] md:max-w-[70%] rounded-2xl px-5 py-3 ${
-                    index % 2 === 0
+                    message.sender === "user"
                       ? "bg-[#1E293B] text-white shadow-lg"
                       : "bg-gradient-to-br from-gray-900/90 to-gray-800/90 text-gray-100 border border-cyan-500/30 shadow-lg shadow-cyan-500/10 backdrop-blur-sm animate-glow"
                   }`}
@@ -159,7 +419,7 @@ export default function LokiChatUI() {
                   </p>
                 </div>
 
-                {index % 2 === 0 && (
+                {message.sender === "user" && (
                   <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center ml-3">
                     <span className="text-white font-bold text-sm">Y</span>
                   </div>
@@ -170,8 +430,12 @@ export default function LokiChatUI() {
             {/* Typing indicator */}
             {isTyping && (
               <div className="flex justify-start animate-slide-in">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center mr-3 shadow-lg shadow-cyan-500/30">
-                  <span className="text-white font-bold text-sm">L</span>
+                <div
+                  className={`flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br ${currentPersona.avatarBg} flex items-center justify-center mr-3 shadow-lg shadow-cyan-500/30`}
+                >
+                  <span className="text-white font-bold text-sm">
+                    {currentPersona.avatar}
+                  </span>
                 </div>
                 <div className="bg-gradient-to-br from-gray-900/90 to-gray-800/90 border border-cyan-500/30 rounded-2xl px-5 py-4 shadow-lg shadow-cyan-500/10 backdrop-blur-sm">
                   <div className="flex space-x-2">
@@ -213,7 +477,10 @@ export default function LokiChatUI() {
               onKeyPress={handleKeyPress}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
-              placeholder="Speak to Loki..."
+              placeholder={`Speak to ${currentPersona.title.replace(
+                "Speak to ",
+                ""
+              )}...`}
               className="w-full px-6 py-4 bg-transparent text-white placeholder-gray-500 outline-none text-sm md:text-base"
             />
             <button
