@@ -87,7 +87,13 @@ Loki:
     });
 
     const responseText = dialogueResponse?.text?.trim() || "I'm silent...";
-    const audio = await generateAudioFromText(responseText, mood); 
+    let audioBase64 = null;
+    try {
+      audioBase64 = await generateAudioFromText(responseText, mood);
+    } catch (error) {
+      console.error("Error generating audio:", error);
+      audioBase64 = null;
+} 
 
     // session history
     sessionStore[userSessionId].messages.push({ role: 'user', text: message });
@@ -102,7 +108,7 @@ Loki:
     sessionId: userSessionId,
     responseText,
     mood,
-    audio,  // base64 encoded TTS 
+    audio: audioBase64,  // base64 encoded TTS 
   }); 
 
   } catch (error) {
