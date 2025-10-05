@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send } from 'lucide-react';
 
+
+
 interface Message {
   id: string;
   text: string;
@@ -26,6 +28,9 @@ export default function LokiChatUI() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [sentiment, setSentiment] = useState<'POSITIVE' | 'NEGATIVE' | 'NEUTRAL'>('NEUTRAL');
+  const [pulseRhythm, setPulseRhythm] = useState<'calm' | 'erratic' | 'steady'>('steady');
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -36,6 +41,33 @@ export default function LokiChatUI() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping]);
+
+
+  // 🎧 Reactive ambient sound system
+useEffect(() => {
+  const calm = new Howl({ src: ["/sounds/calm.mp3"], loop: true, volume: 0 });
+  const tense = new Howl({ src: ["/sounds/tense.mp3"], loop: true, volume: 0 });
+  const neutral = new Howl({ src: ["/sounds/neutral.mp3"], loop: true, volume: 0 });
+
+  calm.play();
+  tense.play();
+  neutral.play();
+
+  const fadeAudio = (target: "POSITIVE" | "NEGATIVE" | "NEUTRAL") => {
+    calm.fade(calm.volume(), target === "POSITIVE" ? 0.6 : 0, 1500);
+    tense.fade(tense.volume(), target === "NEGATIVE" ? 0.6 : 0, 1500);
+    neutral.fade(neutral.volume(), target === "NEUTRAL" ? 0.5 : 0, 1500);
+  };
+
+  fadeAudio(sentiment); // start with current mood
+
+  return () => {
+    calm.unload();
+    tense.unload();
+    neutral.unload();
+  };
+}, [sentiment]);
+
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -53,12 +85,20 @@ export default function LokiChatUI() {
 
     const response = await fetchLokiResponse(input);
 
-    const lokiMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      text: response,
-      sender: 'loki',
-      timestamp: new Date()
-    };
+// --- Dummy Sentiment Analysis ---
+const moods = ['POSITIVE', 'NEGATIVE', 'NEUTRAL'] as const;
+const randomMood = moods[Math.floor(Math.random() * moods.length)];
+setSentiment(randomMood);
+setPulseRhythm(randomMood === 'POSITIVE' ? 'calm' : randomMood === 'NEGATIVE' ? 'erratic' : 'steady');
+// --------------------------------
+
+const lokiMessage: Message = {
+  id: (Date.now() + 1).toString(),
+  text: response,
+  sender: 'loki',
+  timestamp: new Date()
+};
+
 
     setIsTyping(false);
     setMessages(prev => [...prev, lokiMessage]);
@@ -73,8 +113,31 @@ export default function LokiChatUI() {
 
   const hasMessages = messages.length > 0 || isTyping;
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#121212] to-[#1a1a1a] relative overflow-hidden">
+  // 🎨 Dynamic background gradient based on sentiment
+const getBackground = () => {
+  // Before chat starts → your old dark mystical look
+  if (!hasMessages) {
+    return "linear-gradient(135deg, #0a0a0a 0%, #121212 40%, #1a1a1a 100%)";
+  }
+
+  // After chat begins → reactive mood colors
+  switch (sentiment) {
+    case "POSITIVE":
+      return "linear-gradient(135deg, #0f172a 0%, #10b981 40%, #6ee7b7 100%)";
+    case "NEGATIVE":
+      return "linear-gradient(135deg, #0f172a 0%, #dc2626 40%, #f43f5e 100%)";
+    default:
+      return "linear-gradient(135deg, #0f172a 0%, #3b82f6 40%, #06b6d4 100%)";
+  }
+};
+
+
+
+  return (<div
+  className="min-h-screen relative overflow-hidden transition-all duration-[2000ms] ease-in-out"
+  style={{ background: getBackground() }}
+>
+
       {/* Animated particles background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl animate-pulse"
@@ -101,10 +164,40 @@ export default function LokiChatUI() {
             <p className="text-gray-400 text-lg">The trickster Goblin awaits your questions...</p>
           </div>
         )}
+        {/* Harmony Meter */}
+{/* Harmony Meter (Top Center Pulsing Ball) */}
+<div className="absolute top-6 left-1/2 -translate-x-1/2 z-20">
+  <div
+    className={`w-8 h-8 md:w-10 md:h-10 rounded-full transition-all duration-500 ${
+      sentiment === 'POSITIVE'
+        ? 'bg-gradient-to-r from-green-400 to-emerald-500 shadow-lg shadow-green-500/40'
+        : sentiment === 'NEGATIVE'
+        ? 'bg-gradient-to-r from-red-500 to-pink-600 shadow-lg shadow-pink-500/40'
+        : 'bg-gradient-to-r from-blue-400 to-cyan-500 shadow-lg shadow-cyan-500/40'
+    }`}
+    style={{
+      animation: pulseRhythm === 'calm'
+        ? 'pulse 2s ease-in-out infinite'
+        : pulseRhythm === 'erratic'
+        ? 'pulse 0.8s ease-in-out infinite'
+        : 'pulse 1.4s ease-in-out infinite'
+    }}
+  ></div>
+</div>
+
+
 
         {/* Messages area */}
         {hasMessages && (
-          <div className="flex-1 overflow-y-auto mb-4 space-y-4 py-6 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+  <div
+    className="flex-1 mb-4 space-y-4 py-6 overflow-y-scroll no-scrollbar"
+    style={{
+      scrollbarWidth: "none", // for Firefox
+      msOverflowStyle: "none", // for IE & Edge
+    }}
+  >
+
+
             {messages.map((message, index) => (
               <div
                 key={message.id}
@@ -155,11 +248,17 @@ export default function LokiChatUI() {
 
         {/* Input area */}
         <div className={`${hasMessages ? 'pb-6' : ''}`}>
-          <div className={`relative backdrop-blur-sm bg-white/5 rounded-2xl border transition-all duration-300 ${
-            isFocused
-              ? 'border-cyan-400/50 shadow-lg shadow-cyan-500/20'
-              : 'border-gray-700/50'
-          }`}>
+         <div
+  className={`relative rounded-2xl border-2 transition-all duration-500 backdrop-blur-xl ${
+    sentiment === 'POSITIVE'
+      ? 'bg-[#0f172a]/60 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.4)]'
+      : sentiment === 'NEGATIVE'
+      ? 'bg-[#1a0e0e]/70 border-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.4)]'
+      : 'bg-[#0a1020]/60 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.4)]'
+  } ${isFocused ? 'scale-[1.03]' : 'scale-[1.0]'}`}
+>
+
+
             <input
               ref={inputRef}
               type="text"
@@ -169,16 +268,21 @@ export default function LokiChatUI() {
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               placeholder="Speak to Loki..."
-              className="w-full px-6 py-4 bg-transparent text-white placeholder-gray-500 outline-none text-sm md:text-base"
+              className="w-full px-6 py-4 bg-transparent text-white placeholder-gray-300 outline-none text-base"
             />
             <button
               onClick={handleSend}
               disabled={!input.trim()}
               className={`absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-xl transition-all duration-300 ${
-                input.trim()
-                  ? 'bg-gradient-to-r from-cyan-500 to-purple-600 hover:shadow-lg hover:shadow-cyan-500/30 hover:scale-105'
-                  : 'bg-gray-700/50 cursor-not-allowed'
-              }`}
+  input.trim()
+    ? sentiment === 'POSITIVE'
+      ? 'bg-gradient-to-r from-green-400 to-emerald-500 hover:shadow-lg hover:shadow-green-500/40 hover:scale-105'
+      : sentiment === 'NEGATIVE'
+      ? 'bg-gradient-to-r from-red-500 to-pink-600 hover:shadow-lg hover:shadow-pink-500/40 hover:scale-105'
+      : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:shadow-lg hover:shadow-cyan-500/40 hover:scale-105'
+    : 'bg-gray-700/50 cursor-not-allowed'
+}`}
+
             >
               <Send className={`w-4 h-4 ${input.trim() ? 'text-white' : 'text-gray-500'}`} />
             </button>
@@ -263,6 +367,43 @@ export default function LokiChatUI() {
         .scrollbar-thin::-webkit-scrollbar-thumb:hover {
           background: #4B5563;
         }
+          @keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+}
+
+
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.85;
+    filter: blur(0px);
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+    filter: blur(1px);
+  }
+}
+
+/* Hide scrollbar but allow scrolling */
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+
       `}</style>
     </div>
   );
