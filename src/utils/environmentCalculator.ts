@@ -1,4 +1,4 @@
-import type { Persona, PulseRhythm } from "../services/apiClient";
+import type { Persona, PulseRhythm } from "../types";
 
 export interface EnvironmentFactors {
   harmonyScore: number;
