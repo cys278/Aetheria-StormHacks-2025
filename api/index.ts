@@ -107,6 +107,8 @@ app.use(
   })
 );
 
+// ✅ Explicitly handle preflight requests on Vercel
+app.options("*", cors());
 
 // Ensure express.json() comes after CORS handling
 app.use(express.json());
