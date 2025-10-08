@@ -80,6 +80,28 @@ const elevenlabs = new ElevenLabsClient({
 
 const app = express();
 
+// ✅ Fix for CORS preflight errors on Vercel
+app.use((req, res, next) => {
+  // Allow any origin (you can change "*" to your domain if you want)
+  res.header("Access-Control-Allow-Origin", "*");
+
+  // Allow these headers and methods
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+
+  // If it's a preflight request, stop here and return 200 OK
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  // Otherwise, continue with the rest of the backend
+  next();
+});
+
+
 /* ------------------------------ CORS SETUP ------------------------------ */
 // Allow both local dev and Vercel preview/prod frontends
 /* ------------------------------ CORS SETUP ------------------------------ */
