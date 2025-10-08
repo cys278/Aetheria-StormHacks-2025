@@ -82,36 +82,31 @@ const app = express();
 
 /* ------------------------------ CORS SETUP ------------------------------ */
 // Allow both local dev and Vercel preview/prod frontends
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:3000",
-  "https://aetheria-tan-rho.vercel.app",
-  /\.vercel\.app$/,
-];
-
-// ✅ Explicitly handle all preflight requests (for Vercel serverless)
+/* ------------------------------ CORS SETUP ------------------------------ */
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl)
-      if (!origin) return callback(null, true);
+      if (!origin) return callback(null, true); // Allow local tools or curl
 
-      if (
-        allowedOrigins.some((o) =>
-          typeof o === "string" ? o === origin : o.test(origin)
-        )
-      ) {
+      // ✅ Allow localhost and any Vercel subdomain (preview or prod)
+      const allowed = [
+        /^https?:\/\/localhost(:\d+)?$/,
+        /^https:\/\/aetheria(-[\w-]+)?\.vercel\.app$/,
+        /^https:\/\/aetheria-git-.*-chowdhury-yasirs-projects\.vercel\.app$/,
+      ];
+
+      if (allowed.some((r) => r.test(origin))) {
         return callback(null, true);
-      } else {
-        console.warn("❌ Blocked by CORS:", origin);
-        return callback(new Error("Not allowed by CORS"));
       }
+
+      console.warn("❌ Blocked by CORS:", origin);
+      return callback(new Error("Not allowed by CORS"));
     },
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true, // optional if you use cookies
   })
 );
+
 
 // Ensure express.json() comes after CORS handling
 app.use(express.json());
