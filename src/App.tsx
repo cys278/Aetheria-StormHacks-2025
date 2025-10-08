@@ -24,29 +24,39 @@ export default function App() {
     <div className="relative w-screen h-screen overflow-hidden bg-black">
       {!awakened && <SceneAwakening onAwaken={() => setAwakened(true)} />}
 
-      {awakened && !citadel && (
-        <LokiChatUI
-          //  NEW: pass mood down + setter callback
-          sentiment={sentiment}
-          pulseRhythm={pulseRhythm}
-          onSentimentChange={(s: MoodType, r: PulseRhythm) => {
-            setSentiment(s);
-            setPulseRhythm(r);
-          }}
-          onTriggerCitadel={() => fadeToBlack(() => setCitadel(true))}
-          onJourneyComplete={(key: string) =>
-            fadeToBlack(() => setEndingKey(key))
-          }
-        />
+      {/* --- Main Game Area (Post-Awakening) --- */}
+      {/* We render this block as soon as the user has awakened */}
+      {awakened && (
+        <>
+          {/* The Chat UI is ALWAYS present as the interactive layer, unless an ending is active */}
+          {!endingKey && (
+            <LokiChatUI
+              sentiment={sentiment}
+              pulseRhythm={pulseRhythm}
+              onSentimentChange={(s: MoodType, r: PulseRhythm) => {
+                setSentiment(s);
+                setPulseRhythm(r);
+              }}
+              onTriggerCitadel={() => fadeToBlack(() => setCitadel(true))}
+              onExitCitadel={handleExitCitadel}
+              onJourneyComplete={(key: string) =>
+                fadeToBlack(() => setEndingKey(key))
+              }
+            />
+          )}
+
+          {/* The Citadel is a CONDITIONAL visual background layer */}
+          {/* It renders ON TOP of the Chat UI's background, but BEHIND its text bubbles */}
+          {citadel && (
+            <SceneCitadel
+              sentiment={sentiment}
+             
+            />
+          )}
+        </>
       )}
 
-      {/* Placeholder: Your second scene component */}
-      {citadel && (
-        // ✨ NEW: Citadel reacts to the same sentiment
-        <SceneCitadel sentiment={sentiment} onExitCitadel={handleExitCitadel} />
-      )}
-
-      {/* Ending overlay takes precedence */}
+      {/* The Ending Screen is a FINAL overlay that covers everything else */}
       {endingKey && (
         <EndingScreen
           endingKey={endingKey}
@@ -54,7 +64,7 @@ export default function App() {
           onClose={() =>
             fadeToBlack(() => {
               setEndingKey(null);
-              setCitadel(false); // ensure we land back in chat
+              setCitadel(false); // Ensure we are not in the citadel after an ending
             })
           }
         />

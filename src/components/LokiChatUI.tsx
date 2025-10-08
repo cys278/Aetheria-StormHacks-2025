@@ -31,12 +31,14 @@ const getSessionId = (): string => {
 
 export default function LokiChatUI({
   onTriggerCitadel,
+  onExitCitadel,
   onJourneyComplete,
   sentiment,
   pulseRhythm,
   onSentimentChange,
 }: {
   onTriggerCitadel?: () => void;
+  onExitCitadel?: () => void;
   onJourneyComplete?: (key: string) => void;
   sentiment: MoodType;
   pulseRhythm: PulseRhythm;
@@ -137,7 +139,7 @@ export default function LokiChatUI({
               body: JSON.stringify({
                 text: lastMessage.text,
                 persona: lastMessage.persona || persona,
-                pulseRhythm: pulseRhythm
+                pulseRhythm: pulseRhythm,
               }),
             }
           );
@@ -238,29 +240,27 @@ export default function LokiChatUI({
         setPersona(response.persona);
       }
 
-      // Handle rebirth and citadel entry events
       if (response.event === "KEY_UNLOCKED") {
         setKeyIsUnlocked(true);
+        setMessages((prev) => [...prev, lokiMessage]); // Display the "Key is yours" message
         console.log("🔑 The key has been unlocked by the player!");
-      }
-      if (response.event === "ENTER_CITADEL") {
-        const guardianMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          text: response.responseText,
-          sender: "loki",
-          persona: response.persona, // <-- Attach the 'core' persona here
-        };
-        setMessages((prev) => [...prev, guardianMessage]);
+      } else if (response.event === "ENTER_CITADEL") {
+        // The `lokiMessage` variable already contains the Core Echo's dialogue from the backend
+        setMessages((prev) => [...prev, lokiMessage]);
         onTriggerCitadel?.();
-      } else if (response.event === "JOURNEY_COMPLETE") {
-        // <-- ADD THIS 'ELSE IF'
-        onJourneyComplete?.("reflection");
+      } else if (response.event === "EXIT_CITADEL") {
+        // The `lokiMessage` variable already contains the "The echo fades..." message
+        setMessages((prev) => [...prev, lokiMessage]);
+        onExitCitadel?.();
       } else if (response.event) {
-        // This handles REBIRTH events
+        // This handles any remaining events like REBIRTH
         setRebirthType(response.event);
         setShowRebirthAnimation(true);
-        setMessages([]);
+        setMessages([]); // Clear messages for the new cycle
         setConversationTurns(0);
+      } else {
+        // This is a normal turn with no special event
+        setMessages((prev) => [...prev, lokiMessage]);
       }
 
       const lokiMessage: Message = {
@@ -272,11 +272,11 @@ export default function LokiChatUI({
 
       setIsTyping(false);
 
-      if (!response.event) {
-        setMessages((prev) => [...prev, lokiMessage]);
-      } else {
-        setMessages([lokiMessage]);
-      }
+      // if (!response.event) {
+      //   setMessages((prev) => [...prev, lokiMessage]);
+      // } else {
+      //   setMessages([lokiMessage]);
+      // }
     } catch (error) {
       console.error("Failed to send message:", error);
       setIsTyping(false);

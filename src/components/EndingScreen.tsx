@@ -61,7 +61,7 @@ export default function EndingScreen({
 
         // If it's the final reflection, call the new endpoint
         if (isReflection) {
-          endpoint = `/api/reflect`;
+          endpoint = `/reflect`;
         }
 
         // ⬇️ change this to your real endpoint if needed

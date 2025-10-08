@@ -4,7 +4,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
-import axios from "axios";
+// import axios from "axios";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { Readable } from "stream";
 
@@ -26,12 +26,12 @@ if (!elevenLabsApiKey) {
 
 type PulseRhythm = "steady" | "calm" | "erratic";
 type MoodType = "positive" | "negative" | "neutral";
-type RebirthEvent =
-  | "JOURNEY_COMPLETE"
-  | "ENTER_CITADEL"
-  | "REBIRTH_POSITIVE"
-  | "REBIRTH_NEGATIVE"
-  | null;
+// type RebirthEvent =
+//   | "JOURNEY_COMPLETE"
+//   | "ENTER_CITADEL"
+//   | "REBIRTH_POSITIVE"
+//   | "REBIRTH_NEGATIVE"
+//   | null;
 type Persona = "genesis" | "zenith" | "nadir" | "core";
 
 // --- Session Management ---
@@ -85,6 +85,19 @@ app.use(cors());
 app.use(express.json());
 
 // --- Dynamic Prompt Engineering ---
+/**
+ * Removes common markdown formatting from a string to prevent TTS from reading it aloud.
+ * @param text The text to clean.
+ * @returns The cleaned text.
+ */
+const cleanMarkdown = (text: string): string => {
+  return text
+    .replace(/\*/g, "") // Removes asterisks (bold/italics)
+    .replace(/_/g, "")  // Removes underscores (italics)
+    .replace(/#/g, "")  // Removes hashes (headers)
+    .replace(/`/g, ""); // Removes backticks (code)
+};
+
 
 /**
  * Builds a contextually rich, dynamic prompt based on all current factors.
@@ -414,7 +427,11 @@ const generateAIResponse = async (
     });
 
     if (response.text) {
-      return response.text.trim();
+      // Get the raw text from the AI
+      const rawText = response.text.trim();
+      // Clean the markdown before returning
+      const cleanedText = cleanMarkdown(rawText);
+      return cleanedText;
     } else {
       throw new Error("Failed to get Gemini response.");
     }
@@ -484,7 +501,7 @@ app.post("/api/converse", async (req: Request, res: Response) => {
     }
 
     // If the player is being repetitive, Loki calls them out. This OVERRIDES normal conversation.
-    if (userSession.sentimentStreak.count >= 3 && !userSession.keyForged) {
+    if (userSession.sentimentStreak.count > 3 && !userSession.keyForged) {
       console.log(
         `🧐 PATTERN DETECTED: Player has a streak of ${userSession.sentimentStreak.count} ${userSession.sentimentStreak.type} messages.`
       );
@@ -636,7 +653,7 @@ app.post("/api/converse", async (req: Request, res: Response) => {
     // --- RE-INTEGRATION ENDS HERE ---
 
     // Decide if Loki should lie. 30% chance.
-    userSession.deceptionActive = Math.random() < 0.3 && !userSession.keyForged;
+    userSession.deceptionActive = Math.random() < 0.6 && !userSession.keyForged;
 
     let targetMood: MoodType = "neutral";
     let pulseRhythm: PulseRhythm = "steady";
@@ -674,6 +691,7 @@ app.post("/api/converse", async (req: Request, res: Response) => {
     });
     userSession.pulseHarmony = pulseRhythm; // Store true pulse
     sessions.set(sessionId, userSession);
+    console.log(userSession);
 
     res.status(200).json({
       responseText: dialogueResult,
