@@ -1,8 +1,8 @@
 // Express.js backend - V2 Narrative Engine (Granular Prompt Control)
 
 import express, { Request, Response } from "express";
-// import cors from "cors";
 import dotenv from "dotenv";
+import cors from "cors";
 import { GoogleGenAI } from "@google/genai";
 // import axios from "axios";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
@@ -82,27 +82,36 @@ const app = express();
 
 /* ------------------------------ CORS SETUP ------------------------------ */
 // Allow both local dev and Vercel preview/prod frontends
-// const allowedOrigins = [
-//   "http://localhost:5173",
-//   "http://localhost:3000",
-//   "https://aetheria-tan-rho.vercel.app",
-//   /\.vercel\.app$/ // allow any Vercel preview URL
-// ];
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://aetheria-tan-rho.vercel.app",
+  /\.vercel\.app$/,
+];
 
 // ✅ Explicitly handle all preflight requests (for Vercel serverless)
-// app.use((req, res, next) => {
-//   console.log(`[CORS DEBUG] Method: ${req.method}, URL: ${req.url}, Origin: ${req.headers.origin}`);
-//   res.setHeader("Access-Control-Allow-Origin", "*"); // Allow all for now
-//   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-//   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization"); // Ensure all relevant headers are here
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
 
-//   if (req.method === "OPTIONS") {
-//     console.log(`[CORS DEBUG] Ending OPTIONS request for: ${req.url}`);
-//     res.status(200).end(); // Important: terminate OPTIONS here
-//     return; // Stop further middleware execution for OPTIONS
-//   }
-//   next(); // For GET, POST, etc., continue to the next middleware
-// });
+      if (
+        allowedOrigins.some((o) =>
+          typeof o === "string" ? o === origin : o.test(origin)
+        )
+      ) {
+        return callback(null, true);
+      } else {
+        console.warn("❌ Blocked by CORS:", origin);
+        return callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true, // optional if you use cookies
+  })
+);
 
 // Ensure express.json() comes after CORS handling
 app.use(express.json());

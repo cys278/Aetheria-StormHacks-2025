@@ -1,3 +1,6 @@
+
+//src/types.ts
+
 export type PulseRhythm = "steady" | "calm" | "erratic";
 export type MoodType = "positive" | "negative" | "neutral";
 export type RebirthEvent = "EXIT_CITADEL" | "KEY_UNLOCKED" | "JOURNEY_COMPLETE" | "ENTER_CITADEL" |"REBIRTH_POSITIVE" | "REBIRTH_NEGATIVE" | null;

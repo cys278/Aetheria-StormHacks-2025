@@ -1,3 +1,6 @@
+
+//src/components/LokiChatUi.tsx
+
 import { Canvas } from "@react-three/fiber";
 import FloatingEchoes from "./FloatingEchoes";
 import { useState, useRef, useEffect } from "react";

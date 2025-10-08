@@ -1,3 +1,6 @@
+
+// src/utils/enviromentCalculator.ts
+
 import type { Persona, PulseRhythm } from "../types";
 
 export interface EnvironmentFactors {

@@ -1,3 +1,5 @@
+// src/components/SceneAwakening
+
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useState, useRef, useEffect } from "react";
 import * as THREE from "three";
